@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>贪吃蛇 — PyScript 版</title>
+  <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css" />
+  <script defer src="https://pyscript.net/latest/pyscript.js"></script>
+  <style>
+    body { background: #222; color: #eee; font-family: Arial, Helvetica, sans-serif; display:flex; flex-direction:column; align-items:center; padding:20px }
+    #controls { width: 640px; display:flex; justify-content:space-between; align-items:center; margin-bottom:10px }
+    canvas { background:#111; display:block; }
+    button { padding:6px 12px; font-size:14px }
+    #instructions { font-size:13px; color:#ccc }
+  </style>
+</head>
+<body>
+  <h2>贪吃蛇 — PyScript 版</h2>
+  <div id="controls">
+    <div>
+      <button id="startBtn">开始/重启 (R)</button>
+      <button id="pauseBtn">暂停/恢复 (Space)</button>
+    </div>
+    <div id="score">得分: 0</div>
+    <div id="instructions">方向键控制 | 按 R 重启 | Space 暂停/恢复</div>
+  </div>
+  <canvas id="gameCanvas"></canvas>
+
+    <script>
+    // 纯 JavaScript 实现的贪吃蛇，避免依赖 PyScript
+    (function(){
+        const CELL_SIZE = 20;
+        const GRID_WIDTH = 30;
+        const GRID_HEIGHT = 20;
+        const INITIAL_SPEED = 120; // ms
+
+        const canvas = document.getElementById('gameCanvas');
+        canvas.width = CELL_SIZE * GRID_WIDTH;
+        canvas.height = CELL_SIZE * GRID_HEIGHT;
+        const ctx = canvas.getContext('2d');
+
+        const scoreEl = document.getElementById('score');
+        const startBtn = document.getElementById('startBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+
+        let snake = [];
+        let food = null;
+        let direction = 'Right';
+        let speed = INITIAL_SPEED;
+        let running = false;
+        let paused = false;
+        let intervalId = null;
+        let score = 0;
+
+        function placeFood(){
+            const empty = [];
+            for(let x=0;x<GRID_WIDTH;x++) for(let y=0;y<GRID_HEIGHT;y++){
+                if(!snake.some(s=>s[0]===x && s[1]===y)) empty.push([x,y]);
+            }
+            if(empty.length===0){
+                food = null; running = false; drawText(`你赢了！\n得分: ${score}\n按 R 重玩`);
+            } else {
+                food = empty[Math.floor(Math.random()*empty.length)];
+            }
+        }
+
+        function drawText(text){
+            ctx.fillStyle = 'rgba(0,0,0,0.6)';
+            ctx.fillRect(0,0,canvas.width,canvas.height);
+            ctx.fillStyle = 'white';
+            ctx.font = '24px Helvetica';
+            const lines = text.split('\n');
+            for(let i=0;i<lines.length;i++){
+                const line = lines[i];
+                const w = ctx.measureText(line).width;
+                ctx.fillText(line, canvas.width/2 - w/2, canvas.height/2 - 12 + i*30);
+            }
+        }
+
+        function draw(){
+            ctx.fillStyle = '#111';
+            ctx.fillRect(0,0,canvas.width,canvas.height);
+            if(food){
+                ctx.fillStyle = '#e74c3c';
+                ctx.fillRect(food[0]*CELL_SIZE, food[1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+            }
+            if(snake.length>0){
+                ctx.fillStyle = '#2ecc71';
+                ctx.fillRect(snake[0][0]*CELL_SIZE, snake[0][1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                ctx.fillStyle = '#27ae60';
+                for(let i=1;i<snake.length;i++){
+                    ctx.fillRect(snake[i][0]*CELL_SIZE, snake[i][1]*CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                }
+            }
+        }
+
+        function restart(){
+            if(intervalId) { clearInterval(intervalId); intervalId = null; }
+            score = 0; scoreEl.innerText = `得分: ${score}`;
+            direction = 'Right'; speed = INITIAL_SPEED; running = true; paused = false;
+            const startX = Math.floor(GRID_WIDTH/4);
+            const startY = Math.floor(GRID_HEIGHT/2);
+            snake = [];
+            for(let i=0;i<3;i++) snake.push([startX - i, startY]);
+            placeFood(); draw();
+            intervalId = setInterval(gameTick, speed);
+        }
+
+        function togglePause(){
+            if(!running) return;
+            if(!paused){
+                paused = true; if(intervalId){ clearInterval(intervalId); intervalId = null; }
+                drawText('暂停\n按 Space 恢复');
+            } else {
+                paused = false; draw(); intervalId = setInterval(gameTick, speed);
+            }
+        }
+
+        function onKey(e){
+            const key = e.key;
+            const mapping = {'ArrowLeft':'Left','ArrowRight':'Right','ArrowUp':'Up','ArrowDown':'Down'};
+            const opposite = {'Left':'Right','Right':'Left','Up':'Down','Down':'Up'};
+            if(mapping[key]){
+                const nd = mapping[key]; if(opposite[nd]!==direction) direction = nd;
+            } else if(key.toLowerCase()==='r'){
+                restart();
+            } else if(key===' ' || key==='Spacebar' || key==='Space'){
+                togglePause();
+            }
+        }
+
+        function gameTick(){
+            if(!running || paused) return;
+            const head = snake[0]; const moves = {'Left':[-1,0],'Right':[1,0],'Up':[0,-1],'Down':[0,1]};
+            const mv = moves[direction]; const newHead = [head[0]+mv[0], head[1]+mv[1]];
+            const x = newHead[0], y = newHead[1];
+            if(x<0 || x>=GRID_WIDTH || y<0 || y>=GRID_HEIGHT || snake.some(s=>s[0]===x && s[1]===y)){
+                running = false; if(intervalId){ clearInterval(intervalId); intervalId = null; }
+                drawText(`游戏结束\n得分: ${score}\n按 R 重试`); return;
+            }
+            snake.unshift(newHead);
+            if(food && newHead[0]===food[0] && newHead[1]===food[1]){
+                score += 10; scoreEl.innerText = `得分: ${score}`;
+                if(score % 50 === 0 && speed > 40){ speed = Math.floor(speed * 0.9); if(intervalId){ clearInterval(intervalId); intervalId = setInterval(gameTick, speed); } }
+                placeFood();
+            } else {
+                snake.pop();
+            }
+            draw();
+        }
+
+        // 事件绑定
+        document.addEventListener('keydown', onKey);
+        startBtn.addEventListener('click', restart);
+        pauseBtn.addEventListener('click', togglePause);
+
+        // 自动开始一次
+        restart();
+    })();
+    </script>
+
+</body>
+</html>
