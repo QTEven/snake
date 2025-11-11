@@ -15,7 +15,7 @@
 
 ```powershell
 # 切换到项目目录
-cd 'C:\Users\12167\Desktop\耄耋快跑'
+cd 
 # 运行游戏
 python .\snake.py
 ```
@@ -42,11 +42,12 @@ python -c "import tkinter; print('tkinter OK')"
 本地运行（推荐使用静态服务器）：
 
 ```powershell
-cd C:\Users\12167\Desktop\snake
+cd 。。。
 python -m http.server 8000
 # 然后在浏览器打开 http://localhost:8000/index.html
 ```
 
 部署到 GitHub Pages：把项目推到 GitHub，启用 Pages 即可直接通过链接分享给他人。
+
 
 注意：PyScript 首次加载需要从网络下载 WebAssembly 与依赖，加载时间会比本地 Python 稍长。
